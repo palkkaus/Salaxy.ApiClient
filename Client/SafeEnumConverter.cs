@@ -21,12 +21,12 @@ namespace Salaxy.Client
         /// <returns>The object value.</returns>
         public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, Newtonsoft.Json.JsonSerializer serializer)
         {
-            // Alternative implementation here: https://filx.medium.com/how-to-fix-nswag-api-client-unknown-enum-value-error-a7faa0320012
+            // Alternative implementation: https://filx.medium.com/how-to-fix-nswag-api-client-unknown-enum-value-error-a7faa0320012
             try
             {
                 return base.ReadJson(reader, objectType, existingValue, serializer);
             }
-            catch (Exception)
+            catch (Exception) 
             {
                 if (Nullable.GetUnderlyingType(objectType) != null)
                 {

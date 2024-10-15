@@ -4,7 +4,7 @@ using Tools.ApiCodegen;
 var config = new ConfigurationBuilder()
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
     .Build();
-string server = config.GetSection("apiServer")?.Value;
+string? server = config.GetSection("apiServer")?.Value;
 if (string.IsNullOrEmpty(server))
 {
     Console.WriteLine("apiServer is not configured in appsettings.json");
