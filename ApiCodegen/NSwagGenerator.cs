@@ -64,6 +64,28 @@ namespace Tools.ApiCodegen
         }
 
         /// <summary>
+        /// Generates the C# code for import staging API.
+        /// </summary>
+        /// <returns></returns>
+        public async Task GenerateImportCSharp(string openApiUrl)
+        {
+            var document = await OpenApiDocument.FromUrlAsync(openApiUrl);
+            var settings = new CSharpClientGeneratorSettings
+            {
+                ClassName = "{controller}Client",
+                OperationNameGenerator = new MultipleClientsFromOperationIdOperationNameGenerator(),
+                CSharpGeneratorSettings =
+                {
+                    Namespace = "Salaxy.Client.Import"
+                }
+            };
+            var generator = new CSharpClientGenerator(document, settings);
+            var code = generator.GenerateFile();
+            code = code.Replace("Newtonsoft.Json.Converters.StringEnumConverter", "Salaxy.Client.SafeEnumConverter");
+            File.WriteAllText(targetFolder + "/Salaxy.Client.Import.cs", code);
+        }
+
+        /// <summary>
         /// Generates the typescript code for connecting to Salaxy main API.
         /// TODO: This is just a demo => Change this to only generate the Model and save that to Monorepo.
         /// </summary>

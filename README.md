@@ -3,8 +3,8 @@ Salaxy.ApiClient
 
 The .Net Client libraries for Salaxy Open API
 
-Salaxy.Client
--------------
+Salaxy.Client.Api
+-----------------
 
 The main core client library for Salaxy Open API. This library is used to interact with Salaxy Open API.
 It resolves the issue that adding enumeration values is not considered a breaking change in the Salaxy API,
@@ -20,6 +20,37 @@ For a simple test to connect to Salaxy API, you may create a console application
 
 ```csharp
 Console.WriteLine(await Salaxy.Client.Tester.QuickAnonTest());
+```
+
+Ask for more examples specific to your usecases from Palkkaus customer services / developer support.
+
+Salaxy.Client.Import
+--------------------
+
+The Salaxy.Client.Import library is used to import data to Salaxy Open API using a separte import / staging service and database.
+The purpose of this import / staging service is to:
+
+- Make it easier to **upsert** meaning insert or update depending on whether the data already exists
+  based on a source ID in the source system.
+- Provide a layer where custom partner or customer specific code may be added to process and modify the data
+  before it is imported to Salaxy Open API
+- Provide a Staging area where data may be checked and approved before it is committed to final Payroll data
+- Perform a set of validation errors especially designed for import usecases to catch potential errors early  
+  and to provide meaningful error messages to developers
+- Provide pricing and absences functionality especially designed for import usecases
+- Provide real-time reporting capabilities to staging data with committed Payroll data.
+  - I.e. salary slips to Employees based on hours / absences just added to the calendar
+
+To use the Salaxy.Client.Import library, you need to add the following NuGet package to your project:
+
+```csharp
+Salaxy.Client
+```
+
+For a simple test to connect to Salaxy API, you may create a console application and add the following code:
+
+```csharp
+Console.WriteLine(await Salaxy.Client.TODO.TODO.TODO.TODO());
 ```
 
 Ask for more examples specific to your usecases from Palkkaus customer services / developer support.

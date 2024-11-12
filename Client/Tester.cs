@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Salaxy.Client.Api;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 
 namespace Salaxy.Client
 {
@@ -53,6 +54,21 @@ namespace Salaxy.Client
                 }
             };
             return await new Salaxy.Client.Api.CalculatorClient(httpClient).RecalculateAsync(calc);
+        }
+
+        /// <summary>
+        /// Tests the connection to the Import API (anonymous).
+        /// </summary>
+        /// <returns>The client cofiguration.</returns>
+        public static async Task<Import.Response> TestImport()
+        {
+            HttpClient httpClient = new HttpClient();
+            httpClient.BaseAddress = new Uri("https://test-import-staging.salaxy.com/");
+            httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+            var client = new Salaxy.Client.Import.Client(httpClient);
+            var versions = await client.GetVersionAsync();
+            return versions;
         }
 
     }

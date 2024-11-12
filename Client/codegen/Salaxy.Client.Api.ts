@@ -2314,6 +2314,444 @@ The items are typically sorted based on this. */
     notes?: string | undefined;
 }
 
+/** Represents a calendar event in iCalendar compatible way. */
+export interface CalendarEvent {
+    /** Type of object that stores the event recurrence.
+Type of CalendarEvent is stored separately into the database and all properties can be edited.
+For other types, you need edit the original object (Calculation, Payload etc.) */
+    payloadType?: ApiItemType | undefined;
+    /** The part of the data that provides the compliance to iCalendar VEVENT data model defined in RFC 5545, 
+not including the properties that are standard in Salaxy (e.g. id/uid, createdAt etc.). */
+    event?: CalendarVEvent | undefined;
+    /** Occurence information based on the event. */
+    occurenceInfo?: CalendarEventOccurenceInfo | undefined;
+    /** Identifier of the object. */
+    id?: string | undefined;
+    /** The date when the object was created. */
+    createdAt?: Date | undefined;
+    /** The time when the object was last updated. 
+Typically this should be a logical update by user (UserUpdatedAt in DTO), not technical updates. */
+    updatedAt?: Date | undefined;
+    /** Owner ID for this data */
+    owner?: string | undefined;
+    /** Indication that for the currently logged-in account, the data is generally read-only. */
+    isReadOnly?: boolean | undefined;
+    /** Primary partner information. Automatically updated from the storage container Partner. */
+    partner?: string | undefined;
+}
+
+/** Stores the calendar even data that is compatible with RFC 5545 VEVENT component. */
+export interface CalendarVEvent {
+    /** Unique identifier: This is the ID of the parent. */
+    uid?: string | undefined;
+    /** Timestamp for the item: This may be important for processing of items to some calendar items, hence stored separately from other dates. */
+    timeStamp?: Date | undefined;
+    /** The start date/time of the event.
+NOTE, unlike in iCalendar, in our model Start is always required and then either End or Duration is used to determine the duration. */
+    start?: string | undefined;
+    /** The end date/time of the event.
+Note that if Duration is set, it will override this property whenever saved or recalculated. */
+    end?: string | undefined;
+    /** The duration of the event. 
+Note that if set to something else than null / zero, this property will always override the End date/datetime. */
+    duration?: string | undefined;
+    /** Returns true if the event is an all-day event: Start and End are dates ("yyyy-MM-dd"), not date-times ("yyyy-MM-ddThh:mm:ss"). */
+    isAllDay?: boolean | undefined;
+    /** The event status as defined in https://tools.ietf.org/html/rfc5545#section-3.8.1.11
+or in Salaxy process. Other statuses default to undefined. */
+    status?: CalendarEventStatus | undefined;
+    /** Short, one-line summary: Text that is typically shown in calendar views. */
+    summary?: string | undefined;
+    /** Categorization of the event */
+    categories?: string[] | undefined;
+    /** The attendees for the event. */
+    attendees?: CalendarAttendee[] | undefined;
+    /** The Alarms (notifications) and other Actions (scripts) related to the event. */
+    actions?: CalendarAction[] | undefined;
+    /** Priority is specified as an integer in the range 0 to 9.
+A value of 0 specifies an undefined priority.
+A value of 1 is the highest priority, 1-4=HIGH, 5=MEDIUM/Normal and 6-9=LOW.
+Negative values may be used by admin functions (not through API) to set priority overrides. */
+    priority?: number | undefined;
+    /** The full description text. */
+    description?: string | undefined;
+    /** Attachments for calendar events. */
+    attachments?: CalendarAttachment[] | undefined;
+    /** The recurrence rules as specified in iCalendar: https://tools.ietf.org/html/rfc5545#section-3.3.10 and https://tools.ietf.org/html/rfc5545#section-3.8.5.3
+E.g. "FREQ=DAILY;INTERVAL=10;COUNT=5" */
+    recurrenceRules?: string[] | undefined;
+    /** Constant recurrence dates specified by RDATE in iCalendar */
+    recurrenceDates?: Date[] | undefined;
+    /** Exception dates specified by EXDATE in iCalendar */
+    exceptionDates?: Date[] | undefined;
+    /** When imported from external system, this contains the original Uid. Null for items created by Salaxy. */
+    originalUid?: string | undefined;
+}
+
+/** Information about the occurences of the calendar event when the event was last stored into the storage. */
+export interface CalendarEventOccurenceInfo {
+    /** If true, the event is a recurring */
+    isRecurring?: boolean | undefined;
+    /** First occurence of the event */
+    occurencesStart?: string | undefined;
+    /** Last occurence of the event. Please note that only max 1 year from today is calculated. */
+    occurencesEnd?: string | undefined;
+    /** Next occurences (max 100) */
+    next?: CalendarOccurence[] | undefined;
+    /** Dictionary of executed actions. */
+    executedActions?: { [key: string]: string; } | undefined;
+}
+
+/** Describes the calendar attendees in an avatar-visualization compatible way. */
+export interface CalendarAttendee {
+    /** Account or Credentials uri IF the attendee is a Palkkaus.fi account. Otherwise null. */
+    uri?: string | undefined;
+    /** The display name of the attendee (CN) */
+    displayName?: string | undefined;
+    /** The E-mail address of the person */
+    email?: string | undefined;
+    /** Entity type: person/company. In calendar attendees, defaults to Person. */
+    entityType?: LegalEntityType | undefined;
+    /** Type of the Avatar picture. */
+    pictureType?: AvatarPictureType | undefined;
+    /** Color - currently only used by type Icon */
+    color?: string | undefined;
+    /** Initials - used by PictureType Icon */
+    initials?: string | undefined;
+    /** URL of the picture if specified as picture (null in a case of type Icon) */
+    url?: string | undefined;
+}
+
+/** Salaxy calendar action is an extension to iCalendar Alarms: It supports the standard alarms: Display, Email and Audio, but also salaxy action scripts. */
+export interface CalendarAction {
+    /** Unique identifier in the Salaxy context. */
+    id?: string | undefined;
+    /** Action type */
+    type?: CalendarActionType | undefined;
+    /** Summary text for the action. Subject for E-mail */
+    summary?: string | undefined;
+    /** Description text for the action. Body text for Email, Notification message for Display. */
+    description?: string | undefined;
+    /** Attendees are E-mail receivers for Email Alert and potentially Display notifications in the future. 
+Script actions may also later use them when credentials, accounts or similar are needed fro execution. */
+    attendees?: CalendarAttendee[] | undefined;
+    /** Attachment files for the action. Attachments for E-mail. */
+    attachments?: CalendarAttachment[] | undefined;
+    /** The duration trigger. Either this or TriggerDateTime must specified. */
+    triggerDuration?: string | undefined;
+    /** The fixed date-time trigger. Only used if, Duration is not available.
+NOTE that Salaxy implements this feature a bit differently than rfc-5545: The spec says that for a repeating event, 
+the alarm should trigger only once (+repeat), but current Salaxy implementation would trigger the alarm the amount of items. */
+    triggerDateTime?: Date | undefined;
+    /** If specified, the action repeats number of times (in addition to the initial trigger) specified in this parameter with RepeatDuration values.
+If Repeat is more than 0, also RepeatDuration must be specified. */
+    repeat?: number | undefined;
+    /** Time between the repeats aftern the initial repeat. */
+    repeatDuration?: string | undefined;
+}
+
+/** Attachment for calendar event or Action/Alarm. */
+export interface CalendarAttachment {
+    /** URI of the attachment. This is the default way of specifying attachments.
+TODO: Check if the Uri data type works in API. If not, switch to string. */
+    uri?: string | undefined;
+    /** Attachment as inline data. Encoded with ValueEncoding. */
+    data?: string | undefined;
+    /** The file format type / mime type (e.g. "text/plain"). */
+    formatType?: string | undefined;
+    /** Encoding for the inline data.
+TODO: Consider making read-only. */
+    valueEncoding?: string | undefined;
+}
+
+/** Occurence of a calendar event */
+export interface CalendarOccurence {
+    /** Identifier of the event that produces this occurence */
+    eventId?: string | undefined;
+    /** Summary text for occurence. Max 255 characters. */
+    summary?: string | undefined;
+    /** Categorization of the event */
+    categories?: string[] | undefined;
+    /** Indicates that the time of the recurrence is irrelevant: Just display the date.
+NOTE that in Occurences, when IsAllDay=true, the End is the date when occurence ends (typically same as Start), not the next day as in VEVENT. */
+    isAllDay?: boolean | undefined;
+    /** If true, the occurence is based on a recurrence rule. */
+    isRecurring?: boolean | undefined;
+    /** The start date/time of the event as ISO 8601 Date ("yyyy-MM-dd") or DateTime ("s"/"yyyy-MM-ddThh:mm:ss") without timezone.
+Value should be Date when IsAllDay is true and DateTime, when it is false. */
+    start?: string | undefined;
+    /** The end date/time of the event as ISO 8601 Date ("yyyy-MM-dd") or DateTime ("s"/"yyyy-MM-ddThh:mm:ss") without timezone.
+Value should be Date when IsAllDay is true and DateTime, when it is false. */
+    end?: string | undefined;
+    /** The duration of the event. */
+    duration?: string | undefined;
+    /** Collection of action occurences for this event occurence. */
+    actions?: CalendarActionOccurence[] | undefined;
+}
+
+/** Occurence of an Action (Alarm in iCalendar) within a Calendar occurence. */
+export interface CalendarActionOccurence {
+    /** Identifier of the event that produces this action occurence */
+    eventId?: string | undefined;
+    /** Identifier of the action that produces this occurence */
+    actionId?: string | undefined;
+    /** Action type */
+    type?: CalendarActionType | undefined;
+    /** The date/date-time this action is executed. */
+    start?: Date | undefined;
+    /** Indicates that the time of the recurrence (start) is irrelevant: Just display the date. */
+    isAllDay?: boolean | undefined;
+    /** Summary text for occurence. Max 255 characters. */
+    summary?: string | undefined;
+}
+
+export interface PageResultOfCalendarEventListItem {
+    items?: CalendarEventListItem[] | undefined;
+    nextPageLink?: string | undefined;
+    count?: number | undefined;
+}
+
+/** Represents a single item in a list of calendar events in the search index. */
+export interface CalendarEventListItem {
+    /** The date when the object was created. */
+    createdAt?: Date | undefined;
+    /** The time when the object was last updated. 
+Typically this should be a logical update by user (UserUpdatedAt in DTO), not technical updates. */
+    updatedAt?: Date | undefined;
+    /** Person GUID for the owner of the object. */
+    ownerId?: string | undefined;
+    /** Metadata for the owner */
+    ownerInfo?: AccountInIndex | undefined;
+    /** The main status depending on the type of the object. */
+    status?: CalendarEventStatus | undefined;
+    /** The back office status depending on the type of the object. */
+    backOfficeStatus?: string | undefined;
+    /** When the event started. Typically, this is the CreatedAt date, but it may be something else. */
+    startAt?: Date | undefined;
+    /** This is the end date of the event.
+Typically, it is the UserUpdatedAt date, but it may be something else - e.g PaidAt for the calculation. */
+    endAt?: Date | undefined;
+    /** Gross salary if that is relevant to the transaction. */
+    grossSalary?: number | undefined;
+    /** This is the payment from the Owner point-of-view:
+Total payment for the Employer and Net salary for the Worker in the case of a calculation.
+Only add here the payment, if the payment is really made. */
+    payment?: number | undefined;
+    /** Estimated fee of the transaction to Palkkaus.fi. */
+    fee?: number | undefined;
+    /** The GUID for the other party. Currently, this is always the PersonID. */
+    otherId?: string | undefined;
+    /** The other party (usually a Person) that is involved in the event (e.g Worker if this is a Salary payment by Employer). */
+    otherPartyInfo?: AccountInIndex | undefined;
+    /** A very short description describing the object as an event. E.g. "Paid salary" */
+    shortText?: string | undefined;
+    /** Business object ids related to this object. E.g. calculations and payrolls in the payment. */
+    businessObjects?: string[] | undefined;
+    /** This is valid for calculations only. The estimated date of salary in worker. */
+    salaryDate?: Date | undefined;
+    /** Business data to include further information of the object. */
+    data?: CalendarEventData | undefined;
+    /** Version number. May be used in conflicts */
+    versionNumber?: number | undefined;
+    /** Salaxy uri of the resource. */
+    uri?: string | undefined;
+    /** Workflow flags for the object.
+Only workflow events with API supported message types are listed. */
+    flags?: string[] | undefined;
+    /** Workflow messages for the object.
+Only workflow events with API supported message types are listed.
+Shown in format "[MessageType]:[Message] ([User] at [UTC-time])" */
+    messages?: string[] | undefined;
+    /** Sub category for the payload. E.g. Payment Category, MoneyTransfer Source. */
+    entityType?: string | undefined;
+    /** The date for the actual period for which this object is done. */
+    logicalDate?: Date | undefined;
+    /** Reference information. E.g. Payment or MoneyTransfer reference number. */
+    reference?: string | undefined;
+    /** External id for the object in 3rd party system. */
+    externalId?: string | undefined;
+    /** Identifier of the object. */
+    id?: string | undefined;
+    /** Owner ID for this data */
+    owner?: string | undefined;
+    /** Indication that for the currently logged-in account, the data is generally read-only. */
+    isReadOnly?: boolean | undefined;
+    /** Primary partner information. Automatically updated from the storage container Partner. */
+    partner?: string | undefined;
+}
+
+/** Calendar event specific business data for index. */
+export interface CalendarEventData {
+    /** The start date/time of the event. */
+    start?: string | undefined;
+    /** The end date/time of the event. */
+    end?: string | undefined;
+    /** The duration of the event. */
+    duration?: string | undefined;
+    /** Recurrence rules as a CRLF separted string. */
+    rRules?: string | undefined;
+    /** Returns true if the event is a recurring event: RRules or Recurrence dates.. */
+    isRecurring?: boolean | undefined;
+    /** Returns true if the event is an all-day event. */
+    isAllDay?: boolean | undefined;
+    /** Priority is specified as an integer in the range 0 to 9.
+A value of 0 specifies an undefined priority.
+A value of 1 is the highest priority, 1-4=HIGH, 5=MEDIUM/Normal and 6-9=LOW.
+Negative values may be used by admin functions (not through API) to set priority overrides. */
+    priority?: number | undefined;
+    /** Status as string */
+    status?: string | undefined;
+}
+
+/** Customer invoice is an invoice from Palkkaus / Salaxy to Customer / Partner: Invoice for the usage of service. */
+export interface CustomerInvoice {
+    /** Header-level information about the invoice. */
+    info?: CustomerInvoiceInfo | undefined;
+    /** The data that is the bases for invoicing e.g. calculations, monthly active users etc. */
+    bases?: CustomerInvoicingBases[] | undefined;
+    /** If not null, contains a final invoice in Laskupiste format. */
+    invoice?: LaskupisteInvoice | undefined;
+    /** Readonly workflow data, which is exposed to API. */
+    workflowData?: WorkflowData | undefined;
+    /** Identifier of the object. */
+    id?: string | undefined;
+    /** The date when the object was created. */
+    createdAt?: Date | undefined;
+    /** The time when the object was last updated. 
+Typically this should be a logical update by user (UserUpdatedAt in DTO), not technical updates. */
+    updatedAt?: Date | undefined;
+    /** Owner ID for this data */
+    owner?: string | undefined;
+    /** Indication that for the currently logged-in account, the data is generally read-only. */
+    isReadOnly?: boolean | undefined;
+    /** Primary partner information. Automatically updated from the storage container Partner. */
+    partner?: string | undefined;
+}
+
+/** Header level data for the customer invoices. */
+export interface CustomerInvoiceInfo {
+    /** Status of this invoice entry. */
+    status?: CustomerInvoiceStatus | undefined;
+    /** Count of companies (end-customers) in this invoice. */
+    companyCount?: number | undefined;
+}
+
+/** Represents the data that is the bases for invoicing e.g. calculations, monthly active users etc. */
+export interface CustomerInvoicingBases {
+    id?: string | undefined;
+    date?: string | undefined;
+    product?: string | undefined;
+    companyId?: string | undefined;
+    partnerId?: string | undefined;
+    amount?: number | undefined;
+    meta?: { [key: string]: any; } | undefined;
+}
+
+export interface LaskupisteInvoice {
+    id?: number | undefined;
+    customerId?: number | undefined;
+    currency?: string | undefined;
+    orderedDate?: string | undefined;
+    invoiceNumber?: number | undefined;
+    invoiceName?: string | undefined;
+    rows?: LaskupisteInvoiceRow[] | undefined;
+    invoiceState?: string | undefined;
+}
+
+/** Single invoice row for Laskupiste */
+export interface LaskupisteInvoiceRow {
+    productId?: number | undefined;
+    name?: string | undefined;
+    amount?: number | undefined;
+    amountType?: string | undefined;
+    unitPrice?: number | undefined;
+    vatPercent?: number | undefined;
+    specifier?: string | undefined;
+    specifierType?: string | undefined;
+    meta?: { [key: string]: any; } | undefined;
+}
+
+export interface PageResultOfCustomerInvoiceListItem {
+    items?: CustomerInvoiceListItem[] | undefined;
+    nextPageLink?: string | undefined;
+    count?: number | undefined;
+}
+
+/** Represents a single item in a list of Customer invoices. Customer invoices are service invoices from Palkkaus / Salaxy to customers and partners. */
+export interface CustomerInvoiceListItem {
+    /** The date when the object was created. */
+    createdAt?: Date | undefined;
+    /** The time when the object was last updated. 
+Typically this should be a logical update by user (UserUpdatedAt in DTO), not technical updates. */
+    updatedAt?: Date | undefined;
+    /** Person GUID for the owner of the object. */
+    ownerId?: string | undefined;
+    /** Metadata for the owner */
+    ownerInfo?: AccountInIndex | undefined;
+    /** The main status depending on the type of the object. */
+    status?: CustomerInvoiceStatus | undefined;
+    /** The back office status depending on the type of the object. */
+    backOfficeStatus?: string | undefined;
+    /** When the event started. Typically, this is the CreatedAt date, but it may be something else. */
+    startAt?: Date | undefined;
+    /** This is the end date of the event.
+Typically, it is the UserUpdatedAt date, but it may be something else - e.g PaidAt for the calculation. */
+    endAt?: Date | undefined;
+    /** Gross salary if that is relevant to the transaction. */
+    grossSalary?: number | undefined;
+    /** This is the payment from the Owner point-of-view:
+Total payment for the Employer and Net salary for the Worker in the case of a calculation.
+Only add here the payment, if the payment is really made. */
+    payment?: number | undefined;
+    /** Estimated fee of the transaction to Palkkaus.fi. */
+    fee?: number | undefined;
+    /** The GUID for the other party. Currently, this is always the PersonID. */
+    otherId?: string | undefined;
+    /** The other party (usually a Person) that is involved in the event (e.g Worker if this is a Salary payment by Employer). */
+    otherPartyInfo?: AccountInIndex | undefined;
+    /** A very short description describing the object as an event. E.g. "Paid salary" */
+    shortText?: string | undefined;
+    /** Business object ids related to this object. E.g. calculations and payrolls in the payment. */
+    businessObjects?: string[] | undefined;
+    /** This is valid for calculations only. The estimated date of salary in worker. */
+    salaryDate?: Date | undefined;
+    /** Business data to include further information of the object. */
+    data?: CustomerInvoiceListItemData | undefined;
+    /** Version number. May be used in conflicts */
+    versionNumber?: number | undefined;
+    /** Salaxy uri of the resource. */
+    uri?: string | undefined;
+    /** Workflow flags for the object.
+Only workflow events with API supported message types are listed. */
+    flags?: string[] | undefined;
+    /** Workflow messages for the object.
+Only workflow events with API supported message types are listed.
+Shown in format "[MessageType]:[Message] ([User] at [UTC-time])" */
+    messages?: string[] | undefined;
+    /** Sub category for the payload. E.g. Payment Category, MoneyTransfer Source. */
+    entityType?: string | undefined;
+    /** The date for the actual period for which this object is done. */
+    logicalDate?: Date | undefined;
+    /** Reference information. E.g. Payment or MoneyTransfer reference number. */
+    reference?: string | undefined;
+    /** External id for the object in 3rd party system. */
+    externalId?: string | undefined;
+    /** Identifier of the object. */
+    id?: string | undefined;
+    /** Owner ID for this data */
+    owner?: string | undefined;
+    /** Indication that for the currently logged-in account, the data is generally read-only. */
+    isReadOnly?: boolean | undefined;
+    /** Primary partner information. Automatically updated from the storage container Partner. */
+    partner?: string | undefined;
+}
+
+/** Customer Invoice specific business data for index. */
+export interface CustomerInvoiceListItemData {
+    /** Number of end-companies in the invoice. */
+    companyCount?: number | undefined;
+}
+
 /** Dataset models some arbitrary data that is store in storage. This is any data that is not "strongly modeled", for example: Imports from / exports to external systems, reports, data analyses and control data for batch processes. */
 export interface Dataset {
     /** Editable metadata info about a dataset. */
@@ -3452,6 +3890,9 @@ For salaries, this is salary date, for monthly / quarterly payments, this is the
     totalExVat?: number | undefined;
     /** Total payable amount for the invoice including VAT. */
     total?: number | undefined;
+    /** Already paid amount of the invoice.
+This is applicable only for some periodic invoices, like tax invoices, which may be paid in parts. */
+    totalPaid?: number | undefined;
     /** The free text that is displayed / sent with the invoice.
 May have multiple lines. */
     message?: string | undefined;
@@ -3464,8 +3905,13 @@ to the pending payment in the Palkkaus system. */
     externalId?: string | undefined;
     /** The current notified status of the invoice in external system. */
     status?: InvoiceStatus | undefined;
+    /** The time when the object status was last updated. */
+    statusAt?: Date | undefined;
     /** List of business object ids (typically calculations) on which the payment is based on. */
     businessObjects?: string[] | undefined;
+    /** The count of paid business objects (typically calculations) which the invoices is based on.
+This is applicable only for some periodic invoices, like tax invoices, which may be paid in parts. */
+    paidBusinessObjectsCount?: number | undefined;
     /** Period for the Invoice: Work period, month / quarter of sidecosts etc. */
     period?: DateRange | undefined;
     /** The payment type of the invoice. If the payment channel does not support the requested payment type (e.g. Salary),
@@ -3528,7 +3974,8 @@ In the case of Salaxy salaries, this is language versioned text of CalculationRo
     /** Price of one product or service without Vat (UnitPriceAmount, Yksikköhinta veroton). 
 Yksikköhinta voidaan ilmoittaa myös verollisena UnitPriceVatIncludedAmount- elementissä laskutuskäytännön ja verottajan ALV-ohjeistuksen mukaan. */
     priceExVat?: number | undefined;
-    /** Vat percent related to the product or service (RowVatRatePercent, Alv%) */
+    /** Vat percent related to the product or service (RowVatRatePercent, Alv%)
+Please note that eg. 24% is valued as 0.24 */
     vatPercent?: number | undefined;
     /** Row total excluding VAT (RowVatExcludedAmount, Yhteensä veroton) */
     totalExVat?: number | undefined;
@@ -3824,6 +4271,14 @@ export interface InvoiceData {
     periodStart?: Date | undefined;
     /** End of period for the Invoice: Work period, month / quarter of sidecosts etc. */
     periodEnd?: Date | undefined;
+    /** Already paid amount of the invoice.
+This is applicable only for some periodic invoices, like tax invoices, which may be paid in parts. */
+    totalPaid?: number | undefined;
+    /** The count of paid business objects (typically calculations) which the invoices is based on.
+This is applicable only for some periodic invoices, like tax invoices, which may be paid in parts. */
+    paidBusinessObjectsCount?: number | undefined;
+    /** The time when the object status was last updated. */
+    statusAt?: Date | undefined;
 }
 
 /** Defines a set of calculations based on identifiers potentially unsaved Calculation objects as well as Payrolls. */
@@ -3961,68 +4416,6 @@ If false, validation has not been done or some calculations are not valid for pa
     applicationId?: string | undefined;
     /** The MessageThread Id, if this payroll is referred in a message thread. */
     messageThreadId?: string | undefined;
-}
-
-/** Salaxy calendar action is an extension to iCalendar Alarms: It supports the standard alarms: Display, Email and Audio, but also salaxy action scripts. */
-export interface CalendarAction {
-    /** Unique identifier in the Salaxy context. */
-    id?: string | undefined;
-    /** Action type */
-    type?: CalendarActionType | undefined;
-    /** Summary text for the action. Subject for E-mail */
-    summary?: string | undefined;
-    /** Description text for the action. Body text for Email, Notification message for Display. */
-    description?: string | undefined;
-    /** Attendees are E-mail receivers for Email Alert and potentially Display notifications in the future. 
-Script actions may also later use them when credentials, accounts or similar are needed fro execution. */
-    attendees?: CalendarAttendee[] | undefined;
-    /** Attachment files for the action. Attachments for E-mail. */
-    attachments?: CalendarAttachment[] | undefined;
-    /** The duration trigger. Either this or TriggerDateTime must specified. */
-    triggerDuration?: string | undefined;
-    /** The fixed date-time trigger. Only used if, Duration is not available.
-NOTE that Salaxy implements this feature a bit differently than rfc-5545: The spec says that for a repeating event, 
-the alarm should trigger only once (+repeat), but current Salaxy implementation would trigger the alarm the amount of items. */
-    triggerDateTime?: Date | undefined;
-    /** If specified, the action repeats number of times (in addition to the initial trigger) specified in this parameter with RepeatDuration values.
-If Repeat is more than 0, also RepeatDuration must be specified. */
-    repeat?: number | undefined;
-    /** Time between the repeats aftern the initial repeat. */
-    repeatDuration?: string | undefined;
-}
-
-/** Describes the calendar attendees in an avatar-visualization compatible way. */
-export interface CalendarAttendee {
-    /** Account or Credentials uri IF the attendee is a Palkkaus.fi account. Otherwise null. */
-    uri?: string | undefined;
-    /** The display name of the attendee (CN) */
-    displayName?: string | undefined;
-    /** The E-mail address of the person */
-    email?: string | undefined;
-    /** Entity type: person/company. In calendar attendees, defaults to Person. */
-    entityType?: LegalEntityType | undefined;
-    /** Type of the Avatar picture. */
-    pictureType?: AvatarPictureType | undefined;
-    /** Color - currently only used by type Icon */
-    color?: string | undefined;
-    /** Initials - used by PictureType Icon */
-    initials?: string | undefined;
-    /** URL of the picture if specified as picture (null in a case of type Icon) */
-    url?: string | undefined;
-}
-
-/** Attachment for calendar event or Action/Alarm. */
-export interface CalendarAttachment {
-    /** URI of the attachment. This is the default way of specifying attachments.
-TODO: Check if the Uri data type works in API. If not, switch to string. */
-    uri?: string | undefined;
-    /** Attachment as inline data. Encoded with ValueEncoding. */
-    data?: string | undefined;
-    /** The file format type / mime type (e.g. "text/plain"). */
-    formatType?: string | undefined;
-    /** Encoding for the inline data.
-TODO: Consider making read-only. */
-    valueEncoding?: string | undefined;
 }
 
 /** Provides a preview of how an invoice should be created. In the future versions, it is expected to return DIFF information on how potential previously created invoices would behave (e.g. if som invoices would be canceled or changed). */
@@ -6589,6 +6982,8 @@ export interface AccountSettingsInSession {
     defaultPaymentChannel?: PaymentChannel | undefined;
     /** Available usecases for the current user. */
     usecases?: UsecaseInSettings[] | undefined;
+    /** Basic information about the avialable integrations: Server URL and supported behaviors in the future. */
+    integration?: IntegrationInSession | undefined;
     /** Partner messages enabled. */
     partnerMessages?: boolean | undefined;
     /** Cost accounting model. */
@@ -6663,6 +7058,13 @@ export interface PrimaryPartnerSettings {
     serviceModelId?: string | undefined;
     /** Defines the service model for the customer. */
     serviceModel?: PartnerServiceModel | undefined;
+}
+
+/** Settings related to Integrations that should be immediately available with session without separate load. */
+export interface IntegrationInSession {
+    /** URL to custom staging / integration server.
+Used in running custom usecases and other custom integrations (currently imports). */
+    serverUrl?: string | undefined;
 }
 
 /** Cost accounting models for session. */
@@ -8712,8 +9114,9 @@ export enum InvoiceType {
     Pension = "pension",
     Union = "union",
     Foreclosure = "foreclosure",
-    Palkkaus = "palkkaus",
+    Payroll = "payroll",
     Service = "service",
+    Fee = "fee",
     Gross = "gross",
     Verification = "verification",
 }
@@ -8964,6 +9367,7 @@ export enum PaymentChannel {
     PalkkausManual = "palkkausManual",
     PalkkausWS = "palkkausWS",
     PalkkausPersonal = "palkkausPersonal",
+    PalkkausInvoices = "palkkausInvoices",
     PalkkausCfaPaytrail = "palkkausCfaPaytrail",
     PalkkausCfaReference = "palkkausCfaReference",
     PalkkausCfaFinvoice = "palkkausCfaFinvoice",
@@ -8989,6 +9393,7 @@ export enum PaymentChannel {
     PasseliMerit = "passeliMerit",
     Odoo = "odoo",
     Ecom = "ecom",
+    Kitsas = "kitsas",
 }
 
 /** PaymentMethod enumeration */
@@ -9147,6 +9552,7 @@ export enum ReportType {
     EarningsPaymentReport = "earningsPaymentReport",
     AccountingReport = "accountingReport",
     Invoice = "invoice",
+    InvoiceList = "invoiceList",
     EmploymentContract = "employmentContract",
     Authorization = "authorization",
 }
